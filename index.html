@@ -241,14 +241,6 @@
             margin-top: 50px;
         }
 
-        .stats-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 30px;
-            gap: 30px;
-        }
-
         .stats-overview {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -351,24 +343,59 @@
             position: relative;
         }
 
-        .axis {
+        .y-axis-labels {
             position: absolute;
-        }
-
-        .x-axis {
-            bottom: 0;
-            left: 80px;
-            right: 30px;
-            height: 40px;
-            border-top: 2px solid var(--primary);
-        }
-
-        .y-axis {
-            top: 30px;
             left: 0;
+            top: 30px;
             bottom: 40px;
-            width: 80px;
-            border-right: 2px solid var(--primary);
+            width: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-right: 15px;
+        }
+
+        .y-axis-label {
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .x-axis-labels {
+            position: absolute;
+            bottom: 0;
+            left: 60px;
+            right: 0;
+            height: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-top: 10px;
+        }
+
+        .x-axis-label {
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            flex: 1;
+        }
+
+        .chart-area {
+            position: absolute;
+            top: 30px;
+            left: 60px;
+            right: 0;
+            bottom: 40px;
+        }
+
+        .grid-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(139, 92, 246, 0.1);
         }
 
         .line-path {
@@ -380,28 +407,27 @@
             pointer-events: none;
         }
 
-        .line-path line {
-            stroke: var(--primary);
-            stroke-width: 2;
-            stroke-dasharray: 5, 5;
-        }
-
         .data-point {
             position: absolute;
-            width: 12px;
-            height: 12px;
+            width: 8px;
+            height: 8px;
             background: var(--primary);
             border-radius: 50%;
             transform: translate(-50%, -50%);
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             border: 2px solid var(--surface);
-            box-shadow: 
-                0 0 0 0 rgba(139, 92, 246, 0.4),
-                0 4px 15px rgba(139, 92, 246, 0.3);
+            box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
         }
 
-        .data-point:hover {
+        .data-point.has-data {
+            width: 12px;
+            height: 12px;
+            background: var(--primary);
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+
+        .data-point.has-data:hover {
             width: 20px;
             height: 20px;
             background: var(--secondary);
@@ -541,6 +567,23 @@
             .prompts-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .chart-container {
+                padding: 15px;
+                height: 400px;
+            }
+            
+            .y-axis-labels {
+                width: 40px;
+            }
+            
+            .chart-area {
+                left: 40px;
+            }
+            
+            .x-axis-labels {
+                left: 40px;
+            }
         }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
@@ -645,9 +688,11 @@
 
                 <div class="chart-container">
                     <div class="chart" id="statsChart">
-                        <svg class="line-path" id="linePath"></svg>
-                        <div class="y-axis" id="yAxis"></div>
-                        <div class="x-axis" id="xAxis"></div>
+                        <div class="y-axis-labels" id="yAxisLabels"></div>
+                        <div class="x-axis-labels" id="xAxisLabels"></div>
+                        <div class="chart-area" id="chartArea">
+                            <svg class="line-path" id="linePath"></svg>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -731,17 +776,22 @@
         }
 
         function updateChart() {
-            const chart = document.getElementById('statsChart');
+            const chartArea = document.getElementById('chartArea');
             const linePath = document.getElementById('linePath');
-            const xAxis = document.getElementById('xAxis');
-            const yAxis = document.getElementById('yAxis');
+            const xAxisLabels = document.getElementById('xAxisLabels');
+            const yAxisLabels = document.getElementById('yAxisLabels');
             
             linePath.innerHTML = '';
-            xAxis.innerHTML = '';
-            yAxis.innerHTML = '';
+            xAxisLabels.innerHTML = '';
+            yAxisLabels.innerHTML = '';
+            chartArea.innerHTML = '<svg class="line-path" id="linePath"></svg>';
+            linePath = document.getElementById('linePath');
+            
+            const existingPoints = document.querySelectorAll('.data-point');
+            existingPoints.forEach(point => point.remove());
             
             if (solveData.length === 0) {
-                chart.innerHTML += '<div class="loading">No solve data available</div>';
+                chartArea.innerHTML += '<div class="loading">No solve data available</div>';
                 return;
             }
 
@@ -852,55 +902,45 @@
         }
 
         function drawAxes(labels, maxCount) {
-            const xAxis = document.getElementById('xAxis');
-            const yAxis = document.getElementById('yAxis');
+            const xAxisLabels = document.getElementById('xAxisLabels');
+            const yAxisLabels = document.getElementById('yAxisLabels');
+            const chartArea = document.getElementById('chartArea');
 
-            const xStep = (xAxis.offsetWidth - 20) / (labels.length - 1);
             labels.forEach((label, index) => {
                 const labelEl = document.createElement('div');
+                labelEl.className = 'x-axis-label';
                 labelEl.textContent = label;
-                labelEl.style.position = 'absolute';
-                labelEl.style.left = (index * xStep) + 'px';
-                labelEl.style.bottom = '-35px';
-                labelEl.style.fontSize = '12px';
-                labelEl.style.color = 'var(--text-muted)';
-                labelEl.style.fontWeight = '500';
-                xAxis.appendChild(labelEl);
+                xAxisLabels.appendChild(labelEl);
             });
 
             const ySteps = 5;
-            const yStep = (yAxis.offsetHeight - 20) / ySteps;
             for (let i = 0; i <= ySteps; i++) {
                 const value = Math.round((maxCount / ySteps) * i);
                 const labelEl = document.createElement('div');
+                labelEl.className = 'y-axis-label';
                 labelEl.textContent = value;
-                labelEl.style.position = 'absolute';
-                labelEl.style.right = '8px';
-                labelEl.style.top = (i * yStep) + 'px';
-                labelEl.style.transform = 'translateY(-50%)';
-                labelEl.style.fontSize = '12px';
-                labelEl.style.color = 'var(--text-muted)';
-                labelEl.style.fontWeight = '500';
-                yAxis.appendChild(labelEl);
+                yAxisLabels.appendChild(labelEl);
+                
+                const gridLine = document.createElement('div');
+                gridLine.className = 'grid-line';
+                gridLine.style.top = `${(i / ySteps) * 100}%`;
+                chartArea.appendChild(gridLine);
             }
         }
 
         function drawLineChart(dataPoints, totalIntervals) {
             const linePath = document.getElementById('linePath');
-            const xAxis = document.getElementById('xAxis');
-            const yAxis = document.getElementById('yAxis');
+            const chartArea = document.getElementById('chartArea');
 
-            const chartWidth = xAxis.offsetWidth;
-            const chartHeight = yAxis.offsetHeight;
-            const chartLeft = yAxis.offsetWidth;
-            const chartTop = 30;
+            const chartWidth = chartArea.offsetWidth;
+            const chartHeight = chartArea.offsetHeight;
 
             const maxCount = Math.max(1, ...dataPoints.map(d => d.count));
 
             let pathData = '';
             dataPoints.forEach((point, index) => {
-                const x = chartLeft + (index / (totalIntervals - 1)) * chartWidth;
-                const y = chartTop + chartHeight - ((point.count / maxCount) * chartHeight);
+                const x = (index / (totalIntervals - 1)) * chartWidth;
+                const y = chartHeight - ((point.count / maxCount) * chartHeight);
                 
                 if (index === 0) {
                     pathData = `M ${x} ${y}`;
@@ -920,28 +960,26 @@
         }
 
         function drawDataPoints(dataPoints, totalIntervals) {
-            const chart = document.getElementById('statsChart');
-            const xAxis = document.getElementById('xAxis');
-            const yAxis = document.getElementById('yAxis');
-
-            const chartWidth = xAxis.offsetWidth;
-            const chartHeight = yAxis.offsetHeight;
-            const chartLeft = yAxis.offsetWidth;
-            const chartTop = 30;
+            const chartArea = document.getElementById('chartArea');
+            const chartWidth = chartArea.offsetWidth;
+            const chartHeight = chartArea.offsetHeight;
 
             const maxCount = Math.max(1, ...dataPoints.map(d => d.count));
 
             dataPoints.forEach((point, index) => {
-                const x = chartLeft + (index / (totalIntervals - 1)) * chartWidth;
-                const y = chartTop + chartHeight - ((point.count / maxCount) * chartHeight);
+                const x = (index / (totalIntervals - 1)) * chartWidth;
+                const y = chartHeight - ((point.count / maxCount) * chartHeight);
 
                 const pointEl = document.createElement('div');
                 pointEl.className = 'data-point';
+                if (point.count > 0) {
+                    pointEl.classList.add('has-data');
+                }
                 pointEl.style.left = x + 'px';
                 pointEl.style.top = y + 'px';
                 pointEl.setAttribute('data-count', point.count);
 
-                if (point.entries.length > 0) {
+                if (point.count > 0 && point.entries.length > 0) {
                     const entry = point.entries[0];
                     pointEl.setAttribute('data-prompt', entry.prompt);
                     pointEl.setAttribute('data-time', entry.timestamp);
@@ -969,13 +1007,13 @@
 
                     pointEl.addEventListener('mousemove', (e) => {
                         if (pointEl._tooltip) {
-                            tooltip.style.left = (e.pageX + 15) + 'px';
-                            tooltip.style.top = (e.pageY - 15) + 'px';
+                            pointEl._tooltip.style.left = (e.pageX + 15) + 'px';
+                            pointEl._tooltip.style.top = (e.pageY - 15) + 'px';
                         }
                     });
                 }
 
-                chart.appendChild(pointEl);
+                chartArea.appendChild(pointEl);
             });
         }
 
