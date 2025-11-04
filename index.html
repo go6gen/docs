@@ -22,6 +22,9 @@
             --surface-light: #2D2B55;
             --text: #E2E8F0;
             --text-muted: #94A3B8;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
         }
 
         body {
@@ -417,6 +420,71 @@
             font-size: 1.1em;
         }
 
+        .example-section {
+            margin: 30px 0;
+            padding: 25px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            border-left: 4px solid var(--success);
+        }
+
+        .example-title {
+            color: var(--success);
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .response-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .response-card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid var(--success);
+        }
+
+        .response-card.error {
+            border-left-color: var(--error);
+        }
+
+        .response-card.warning {
+            border-left-color: var(--warning);
+        }
+
+        .response-status {
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .response-card.success .response-status {
+            color: var(--success);
+        }
+
+        .response-card.error .response-status {
+            color: var(--error);
+        }
+
+        .response-card.warning .response-status {
+            color: var(--warning);
+        }
+
+        .code-snippet {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9em;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 20px 15px;
@@ -446,6 +514,10 @@
                 padding: 15px;
                 height: 400px;
             }
+            
+            .response-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
@@ -468,7 +540,7 @@
                 <div class="code-block">
 {
     "key": "your_api_key",
-    "prompt": "Click the star",
+    "prompt": "Where's bro dihh",
     "image": "base64_encoded_image"
 }
                 </div>
@@ -500,19 +572,148 @@
                     </tr>
                 </table>
 
-                <div class="response-section">
-                    <h3 class="response-title">Response</h3>
+                <div class="example-section">
+                    <h3 class="example-title">Usage Examples</h3>
+                    
+                    <h4 style="color: var(--primary-light); margin: 20px 0 10px 0;">Python</h4>
                     <div class="code-block">
+import requests
+import base64
+
+with open("captcha.png", "rb") as image_file:
+    image_b64 = base64.b64encode(image_file.read()).decode()
+
+response = requests.post(
+    "http://203.161.41.146:5000/solve",
+    json={
+        "key": "your_api_key_here",
+        "prompt": "Where's bro dihh",
+        "image": image_b64
+    }
+)
+print(response.json())
+                    </div>
+                    
+                    <h4 style="color: var(--primary-light); margin: 20px 0 10px 0;">JavaScript</h4>
+                    <div class="code-block">
+const fs = require('fs');
+
+const imageBuffer = fs.readFileSync('captcha.png');
+const imageBase64 = imageBuffer.toString('base64');
+
+fetch('http://203.161.41.146:5000/solve', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+        key: 'your_api_key_here',
+        prompt: 'Where's bro dihh',
+        image: imageBase64
+    })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+                    </div>
+                    
+                    <h4 style="color: var(--primary-light); margin: 20px 0 10px 0;">cURL</h4>
+                    <div class="code-block">
+curl -X POST http://203.161.41.146:5000/solve \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "your_api_key_here",
+    "prompt": "Where's bro dihh",
+    "image": "$(base64 -i captcha.png)"
+  }'
+                    </div>
+                </div>
+
+                <div class="response-section">
+                    <h3 class="response-title">Response Examples</h3>
+                    
+                    <div class="response-grid">
+                        <div class="response-card success">
+                            <div class="response-status">Success Response (Click)</div>
+                            <div class="code-snippet">
 {
     "cords": [123, 456],
     "type": "click"
 }
-                    </div>
-                    <div class="code-block">
+                            </div>
+                        </div>
+                        
+                        <div class="response-card success">
+                            <div class="response-status">Success Response (Drag)</div>
+                            <div class="code-snippet">
 {
     "cords": [[123, 456], [789, 321]],
     "type": "drag"
 }
+                            </div>
+                        </div>
+                        
+                        <div class="response-card error">
+                            <div class="response-status">Error: Invalid API Key (401)</div>
+                            <div class="code-snippet">
+{
+    "error": "Invalid API key"
+}
+                            </div>
+                        </div>
+                        
+                        <div class="response-card error">
+                            <div class="response-status">Error: Missing Parameters (400)</div>
+                            <div class="code-snippet">
+{
+    "error": "No prompt provided"
+}
+                            </div>
+                        </div>
+                        
+                        <div class="response-card error">
+                            <div class="response-status">Error: Unsupported Challenge (404)</div>
+                            <div class="code-snippet">
+{
+    "error": "This challenge is not supported yet"
+}
+                            </div>
+                        </div>
+                        
+                        <div class="response-card error">
+                            <div class="response-status">Error: No Objects Detected (404)</div>
+                            <div class="code-snippet">
+{
+    "error": "No star found in image"
+}
+                            </div>
+                        </div>
+                        
+                        <div class="response-card error">
+                            <div class="response-status">Error: Invalid Image Data (400)</div>
+                            <div class="code-snippet">
+{
+    "error": "Invalid image data: ..."
+}
+                            </div>
+                        </div>
+                        
+                        <div class="response-card error">
+                            <div class="response-status">Error: Model Not Available (500)</div>
+                            <div class="code-snippet">
+{
+    "error": "Model not available"
+}
+                            </div>
+                        </div>
+                        
+                        <div class="response-card error">
+                            <div class="response-status">Error: Processing Failed (500)</div>
+                            <div class="code-snippet">
+{
+    "error": "Processing failed: ..."
+}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -554,39 +755,40 @@
             </div>
         </div>
 
-<div class="card">
-    <h2 class="endpoint-title">Supported Challenges</h2>
-    <div class="prompts-grid">
-        <div class="prompt-card">
-            <h3>Pick the object commonly found in this kind of shop</h3>
-            <p>Identify and select the banana from shop items</p>
-            <div class="prompt-image">
-                <img src="./images/kindofshop.png" alt="Shop challenge example" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
-            </div>
-        </div>
-        <div class="prompt-card">
-            <h3>Please click on the object that is different</h3>
-            <p>Find and click the unique or weird object among other spheres</p>
-            <div class="prompt-image">
-                <img src="./images/sphere.png" alt="Different object challenge" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
-            </div>
-        </div>
-        <div class="prompt-card">
-            <h3>Please drag the icon on the bottom to the place where it fits</h3>
-            <p>Drag and drop the icon to their correct positions</p>
-            <div class="prompt-image">
-                <img src="./images/hourglass.png" alt="Icon placement challenge" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
-            </div>
-        </div>
-        <div class="prompt-card">
-            <h3>Please drag the image piece to complete the corresponding image</h3>
-            <p>Complete the puzzle by completing the trucks</p>
-            <div class="prompt-image">
-                <img src="./images/trucks.png" alt="Image completion challenge" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
+        <div class="card">
+            <h2 class="endpoint-title">Supported Challenges</h2>
+            <div class="prompts-grid">
+                <div class="prompt-card">
+                    <h3>Pick the object commonly found in this kind of shop</h3>
+                    <p>Identify and select the banana from shop items</p>
+                    <div class="prompt-image">
+                        <img src="./images/kindofshop.png" alt="Shop challenge example" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
+                    </div>
+                </div>
+                <div class="prompt-card">
+                    <h3>Please click on the object that is different</h3>
+                    <p>Find and click the unique or weird object among other spheres</p>
+                    <div class="prompt-image">
+                        <img src="./images/sphere.png" alt="Different object challenge" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
+                    </div>
+                </div>
+                <div class="prompt-card">
+                    <h3>Please drag the icon on the bottom to the place where it fits</h3>
+                    <p>Drag and drop the icon to their correct positions</p>
+                    <div class="prompt-image">
+                        <img src="./images/hourglass.png" alt="Icon placement challenge" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
+                    </div>
+                </div>
+                <div class="prompt-card">
+                    <h3>Please drag the image piece to complete the corresponding image</h3>
+                    <p>Complete the puzzle by completing the trucks</p>
+                    <div class="prompt-image">
+                        <img src="./images/trucks.png" alt="Image completion challenge" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
     <script>
         let currentTimeRange = 'day';
