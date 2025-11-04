@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VisionSolve API</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -337,127 +338,6 @@
             padding: 30px;
         }
 
-        .chart {
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-
-        .y-axis-labels {
-            position: absolute;
-            left: 0;
-            top: 30px;
-            bottom: 40px;
-            width: 60px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: flex-end;
-            padding-right: 15px;
-        }
-
-        .y-axis-label {
-            color: var(--text-muted);
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .x-axis-labels {
-            position: absolute;
-            bottom: 0;
-            left: 60px;
-            right: 0;
-            height: 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding-top: 10px;
-        }
-
-        .x-axis-label {
-            color: var(--text-muted);
-            font-size: 12px;
-            font-weight: 500;
-            text-align: center;
-            flex: 1;
-        }
-
-        .chart-area {
-            position: absolute;
-            top: 30px;
-            left: 60px;
-            right: 0;
-            bottom: 40px;
-        }
-
-        .grid-line {
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: rgba(139, 92, 246, 0.1);
-        }
-
-        .line-path {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        .data-point {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: var(--primary);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 2px solid var(--surface);
-            box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
-        }
-
-        .data-point.has-data {
-            width: 12px;
-            height: 12px;
-            background: var(--primary);
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-        }
-
-        .data-point.has-data:hover {
-            width: 20px;
-            height: 20px;
-            background: var(--secondary);
-            box-shadow: 
-                0 0 0 8px rgba(236, 72, 153, 0.2),
-                0 8px 30px rgba(236, 72, 153, 0.4);
-            z-index: 10;
-        }
-
-        .tooltip {
-            position: absolute;
-            background: linear-gradient(145deg, var(--surface), var(--surface-light));
-            color: var(--text);
-            padding: 16px;
-            border-radius: 12px;
-            font-size: 14px;
-            pointer-events: none;
-            z-index: 100;
-            white-space: nowrap;
-            border: 1px solid rgba(139, 92, 246, 0.2);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(20px);
-        }
-
-        .tooltip strong {
-            color: var(--primary);
-            display: block;
-            margin-bottom: 8px;
-        }
-
         .prompts-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -572,18 +452,6 @@
                 padding: 15px;
                 height: 400px;
             }
-            
-            .y-axis-labels {
-                width: 40px;
-            }
-            
-            .chart-area {
-                left: 40px;
-            }
-            
-            .x-axis-labels {
-                left: 40px;
-            }
         }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
@@ -687,13 +555,7 @@
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart" id="statsChart">
-                        <div class="y-axis-labels" id="yAxisLabels"></div>
-                        <div class="x-axis-labels" id="xAxisLabels"></div>
-                        <div class="chart-area" id="chartArea">
-                            <svg class="line-path" id="linePath"></svg>
-                        </div>
-                    </div>
+                    <canvas id="statsChart"></canvas>
                 </div>
             </div>
         </div>
@@ -738,6 +600,7 @@
     <script>
         let currentTimeRange = 'day';
         let solveData = [];
+        let chart = null;
 
         async function loadSolveData() {
             try {
@@ -776,32 +639,99 @@
         }
 
         function updateChart() {
-            const chartArea = document.getElementById('chartArea');
-            const linePath = document.getElementById('linePath');
-            const xAxisLabels = document.getElementById('xAxisLabels');
-            const yAxisLabels = document.getElementById('yAxisLabels');
+            const ctx = document.getElementById('statsChart').getContext('2d');
             
-            linePath.innerHTML = '';
-            xAxisLabels.innerHTML = '';
-            yAxisLabels.innerHTML = '';
-            chartArea.innerHTML = '<svg class="line-path" id="linePath"></svg>';
-            linePath = document.getElementById('linePath');
-            
-            const existingPoints = document.querySelectorAll('.data-point');
-            existingPoints.forEach(point => point.remove());
-            
-            if (solveData.length === 0) {
-                chartArea.innerHTML += '<div class="loading">No solve data available</div>';
-                return;
+            if (chart) {
+                chart.destroy();
             }
 
             const filteredData = filterDataByTimeRange(solveData, currentTimeRange);
-            const timeLabels = generateTimeLabels(currentTimeRange);
-            const dataPoints = aggregateData(filteredData, currentTimeRange);
+            const { labels, data } = aggregateData(filteredData, currentTimeRange);
 
-            drawAxes(timeLabels, Math.max(1, ...dataPoints.map(d => d.count)));
-            drawLineChart(dataPoints, timeLabels.length);
-            drawDataPoints(dataPoints, timeLabels.length);
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Solves',
+                        data: data,
+                        borderColor: '#8B5CF6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#8B5CF6',
+                        pointBorderColor: '#1A1B2F',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 10,
+                        pointHoverBackgroundColor: '#EC4899',
+                        pointHoverBorderColor: '#1A1B2F',
+                        pointHoverBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 27, 47, 0.9)',
+                            titleColor: '#8B5CF6',
+                            bodyColor: '#E2E8F0',
+                            borderColor: '#8B5CF6',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            displayColors: false,
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    return `${tooltipItems[0].label}`;
+                                },
+                                label: function(context) {
+                                    return `Solves: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(139, 92, 246, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94A3B8',
+                                font: {
+                                    family: 'Inter'
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(139, 92, 246, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94A3B8',
+                                font: {
+                                    family: 'Inter'
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    animations: {
+                        tension: {
+                            duration: 1000,
+                            easing: 'linear'
+                        }
+                    }
+                }
+            });
         }
 
         function filterDataByTimeRange(data, range) {
@@ -829,35 +759,6 @@
             return data.filter(entry => new Date(entry.timestamp_iso) >= startTime);
         }
 
-        function generateTimeLabels(range) {
-            const labels = [];
-            const now = new Date();
-
-            switch(range) {
-                case 'day':
-                    for (let i = 0; i < 24; i += 3) {
-                        labels.push(`${i}:00`);
-                    }
-                    break;
-                case 'week':
-                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                    labels.push(...days);
-                    break;
-                case 'month':
-                    const weeksInMonth = 4;
-                    for (let i = 1; i <= weeksInMonth; i++) {
-                        labels.push(`Week ${i}`);
-                    }
-                    break;
-                case 'year':
-                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    labels.push(...months);
-                    break;
-            }
-
-            return labels;
-        }
-
         function aggregateData(data, range) {
             const aggregated = {};
             const now = new Date();
@@ -868,10 +769,10 @@
 
                 switch(range) {
                     case 'day':
-                        key = Math.floor(date.getHours() / 3);
+                        key = date.getHours();
                         break;
                     case 'week':
-                        key = (date.getDay() + 6) % 7;
+                        key = date.getDay();
                         break;
                     case 'month':
                         key = Math.floor((date.getDate() - 1) / 7);
@@ -882,139 +783,44 @@
                 }
 
                 if (!aggregated[key]) {
-                    aggregated[key] = { count: 0, entries: [] };
+                    aggregated[key] = 0;
                 }
-                aggregated[key].count++;
-                aggregated[key].entries.push(entry);
+                aggregated[key]++;
             });
 
-            const result = [];
-            const labelCount = generateTimeLabels(range).length;
-            for (let i = 0; i < labelCount; i++) {
-                result.push({
-                    key: i,
-                    count: aggregated[i] ? aggregated[i].count : 0,
-                    entries: aggregated[i] ? aggregated[i].entries : []
-                });
+            let labels = [];
+            let counts = [];
+
+            switch(range) {
+                case 'day':
+                    for (let i = 0; i < 24; i++) {
+                        labels.push(`${i}:00`);
+                        counts.push(aggregated[i] || 0);
+                    }
+                    break;
+                case 'week':
+                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                    for (let i = 0; i < 7; i++) {
+                        labels.push(days[i]);
+                        counts.push(aggregated[i] || 0);
+                    }
+                    break;
+                case 'month':
+                    for (let i = 0; i < 4; i++) {
+                        labels.push(`Week ${i + 1}`);
+                        counts.push(aggregated[i] || 0);
+                    }
+                    break;
+                case 'year':
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    for (let i = 0; i < 12; i++) {
+                        labels.push(months[i]);
+                        counts.push(aggregated[i] || 0);
+                    }
+                    break;
             }
 
-            return result;
-        }
-
-        function drawAxes(labels, maxCount) {
-            const xAxisLabels = document.getElementById('xAxisLabels');
-            const yAxisLabels = document.getElementById('yAxisLabels');
-            const chartArea = document.getElementById('chartArea');
-
-            labels.forEach((label, index) => {
-                const labelEl = document.createElement('div');
-                labelEl.className = 'x-axis-label';
-                labelEl.textContent = label;
-                xAxisLabels.appendChild(labelEl);
-            });
-
-            const ySteps = 5;
-            for (let i = 0; i <= ySteps; i++) {
-                const value = Math.round((maxCount / ySteps) * i);
-                const labelEl = document.createElement('div');
-                labelEl.className = 'y-axis-label';
-                labelEl.textContent = value;
-                yAxisLabels.appendChild(labelEl);
-                
-                const gridLine = document.createElement('div');
-                gridLine.className = 'grid-line';
-                gridLine.style.top = `${(i / ySteps) * 100}%`;
-                chartArea.appendChild(gridLine);
-            }
-        }
-
-        function drawLineChart(dataPoints, totalIntervals) {
-            const linePath = document.getElementById('linePath');
-            const chartArea = document.getElementById('chartArea');
-
-            const chartWidth = chartArea.offsetWidth;
-            const chartHeight = chartArea.offsetHeight;
-
-            const maxCount = Math.max(1, ...dataPoints.map(d => d.count));
-
-            let pathData = '';
-            dataPoints.forEach((point, index) => {
-                const x = (index / (totalIntervals - 1)) * chartWidth;
-                const y = chartHeight - ((point.count / maxCount) * chartHeight);
-                
-                if (index === 0) {
-                    pathData = `M ${x} ${y}`;
-                } else {
-                    pathData += ` L ${x} ${y}`;
-                }
-            });
-
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', pathData);
-            path.setAttribute('fill', 'none');
-            path.setAttribute('stroke', 'var(--primary)');
-            path.setAttribute('stroke-width', '3');
-            path.setAttribute('stroke-linecap', 'round');
-            path.setAttribute('stroke-linejoin', 'round');
-            linePath.appendChild(path);
-        }
-
-        function drawDataPoints(dataPoints, totalIntervals) {
-            const chartArea = document.getElementById('chartArea');
-            const chartWidth = chartArea.offsetWidth;
-            const chartHeight = chartArea.offsetHeight;
-
-            const maxCount = Math.max(1, ...dataPoints.map(d => d.count));
-
-            dataPoints.forEach((point, index) => {
-                const x = (index / (totalIntervals - 1)) * chartWidth;
-                const y = chartHeight - ((point.count / maxCount) * chartHeight);
-
-                const pointEl = document.createElement('div');
-                pointEl.className = 'data-point';
-                if (point.count > 0) {
-                    pointEl.classList.add('has-data');
-                }
-                pointEl.style.left = x + 'px';
-                pointEl.style.top = y + 'px';
-                pointEl.setAttribute('data-count', point.count);
-
-                if (point.count > 0 && point.entries.length > 0) {
-                    const entry = point.entries[0];
-                    pointEl.setAttribute('data-prompt', entry.prompt);
-                    pointEl.setAttribute('data-time', entry.timestamp);
-
-                    pointEl.addEventListener('mouseover', (e) => {
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'tooltip';
-                        tooltip.innerHTML = `
-                            <strong>${point.count} Solves</strong>
-                            ${entry.prompt}<br>
-                            ${entry.timestamp}
-                        `;
-                        tooltip.style.left = (e.pageX + 15) + 'px';
-                        tooltip.style.top = (e.pageY - 15) + 'px';
-                        document.body.appendChild(tooltip);
-
-                        pointEl._tooltip = tooltip;
-                    });
-
-                    pointEl.addEventListener('mouseout', () => {
-                        if (pointEl._tooltip) {
-                            pointEl._tooltip.remove();
-                        }
-                    });
-
-                    pointEl.addEventListener('mousemove', (e) => {
-                        if (pointEl._tooltip) {
-                            pointEl._tooltip.style.left = (e.pageX + 15) + 'px';
-                            pointEl._tooltip.style.top = (e.pageY - 15) + 'px';
-                        }
-                    });
-                }
-
-                chartArea.appendChild(pointEl);
-            });
+            return { labels, data: counts };
         }
 
         loadSolveData();
