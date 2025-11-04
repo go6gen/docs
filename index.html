@@ -192,6 +192,7 @@
             overflow-x: auto;
             border: 1px solid rgba(139, 92, 246, 0.2);
             position: relative;
+            white-space: pre;
         }
 
         .code-block::before {
@@ -203,6 +204,32 @@
             height: 100%;
             background: var(--primary);
             border-radius: 2px 0 0 2px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            color: var(--primary-light);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(139, 92, 246, 0.3);
+            border-color: var(--primary);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
         }
 
         .param-table {
@@ -447,6 +474,7 @@
             padding: 20px;
             border-radius: 12px;
             border-left: 4px solid var(--success);
+            position: relative;
         }
 
         .response-card.error {
@@ -483,6 +511,8 @@
             font-size: 0.9em;
             margin-top: 10px;
             overflow-x: auto;
+            white-space: pre;
+            position: relative;
         }
 
         @media (max-width: 768px) {
@@ -540,9 +570,10 @@
                 <div class="code-block">
 {
     "key": "your_api_key",
-    "prompt": "Where's bro dihh",
+    "prompt": "Click the star",
     "image": "base64_encoded_image"
 }
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                 </div>
 
                 <table class="param-table">
@@ -580,6 +611,7 @@
 import requests
 import base64
 
+# Read image and encode to base64
 with open("captcha.png", "rb") as image_file:
     image_b64 = base64.b64encode(image_file.read()).decode()
 
@@ -587,17 +619,19 @@ response = requests.post(
     "http://203.161.41.146:5000/solve",
     json={
         "key": "your_api_key_here",
-        "prompt": "Where's bro dihh",
+        "prompt": "Click the star",
         "image": image_b64
     }
 )
 print(response.json())
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                     </div>
                     
                     <h4 style="color: var(--primary-light); margin: 20px 0 10px 0;">JavaScript</h4>
                     <div class="code-block">
 const fs = require('fs');
 
+// Read image and convert to base64
 const imageBuffer = fs.readFileSync('captcha.png');
 const imageBase64 = imageBuffer.toString('base64');
 
@@ -608,12 +642,13 @@ fetch('http://203.161.41.146:5000/solve', {
     },
     body: JSON.stringify({
         key: 'your_api_key_here',
-        prompt: 'Where's bro dihh',
+        prompt: 'Click the star',
         image: imageBase64
     })
 })
 .then(response => response.json())
 .then(data => console.log(data));
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                     </div>
                     
                     <h4 style="color: var(--primary-light); margin: 20px 0 10px 0;">cURL</h4>
@@ -622,9 +657,10 @@ curl -X POST http://203.161.41.146:5000/solve \
   -H "Content-Type: application/json" \
   -d '{
     "key": "your_api_key_here",
-    "prompt": "Where's bro dihh",
+    "prompt": "Click the star",
     "image": "$(base64 -i captcha.png)"
   }'
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                     </div>
                 </div>
 
@@ -639,6 +675,7 @@ curl -X POST http://203.161.41.146:5000/solve \
     "cords": [123, 456],
     "type": "click"
 }
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                             </div>
                         </div>
                         
@@ -649,6 +686,7 @@ curl -X POST http://203.161.41.146:5000/solve \
     "cords": [[123, 456], [789, 321]],
     "type": "drag"
 }
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                             </div>
                         </div>
                         
@@ -658,6 +696,7 @@ curl -X POST http://203.161.41.146:5000/solve \
 {
     "error": "Invalid API key"
 }
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                             </div>
                         </div>
                         
@@ -667,6 +706,7 @@ curl -X POST http://203.161.41.146:5000/solve \
 {
     "error": "No prompt provided"
 }
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                             </div>
                         </div>
                         
@@ -676,6 +716,7 @@ curl -X POST http://203.161.41.146:5000/solve \
 {
     "error": "This challenge is not supported yet"
 }
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                             </div>
                         </div>
                         
@@ -685,6 +726,7 @@ curl -X POST http://203.161.41.146:5000/solve \
 {
     "error": "No star found in image"
 }
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                             </div>
                         </div>
                         
@@ -694,6 +736,7 @@ curl -X POST http://203.161.41.146:5000/solve \
 {
     "error": "Invalid image data: ..."
 }
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                             </div>
                         </div>
                         
@@ -703,6 +746,7 @@ curl -X POST http://203.161.41.146:5000/solve \
 {
     "error": "Model not available"
 }
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                             </div>
                         </div>
                         
@@ -712,6 +756,7 @@ curl -X POST http://203.161.41.146:5000/solve \
 {
     "error": "Processing failed: ..."
 }
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                             </div>
                         </div>
                     </div>
@@ -791,6 +836,26 @@ curl -X POST http://203.161.41.146:5000/solve \
     </div>
 
     <script>
+        // Copy button functionality
+        function copyCode(button) {
+            const codeBlock = button.parentElement;
+            const text = codeBlock.textContent.replace('Copy', '').trim();
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
+        // Analytics functionality
         let currentTimeRange = 'day';
         let solveData = [];
         let chart = null;
