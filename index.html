@@ -872,26 +872,30 @@ curl -X POST http://203.161.41.146:5000/solve \
 
         function updateStatsOverview() {
             const now = new Date();
-            const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-            const weekStartUTC = new Date(todayUTC);
-            const dayOfWeek = todayUTC.getUTCDay();
+            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            
+            const todayStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+            todayStart.setHours(0, 0, 0, 0);
+            
+            const weekStart = new Date(todayStart);
+            const dayOfWeek = todayStart.getDay();
             const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-            weekStartUTC.setUTCDate(todayUTC.getUTCDate() + diffToMonday);
+            weekStart.setDate(todayStart.getDate() + diffToMonday);
             
             const totalSolves = solveData.length;
             const todaySolves = solveData.filter(entry => {
                 const entryDate = new Date(entry.timestamp_iso);
-                const entryUTCDate = new Date(Date.UTC(
-                    entryDate.getUTCFullYear(), 
-                    entryDate.getUTCMonth(), 
-                    entryDate.getUTCDate()
-                ));
-                return entryUTCDate.getTime() === todayUTC.getTime();
+                const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
+                const entryLocalDate = new Date(entryLocal.getFullYear(), entryLocal.getMonth(), entryLocal.getDate());
+                return entryLocalDate.getTime() === todayStart.getTime();
             }).length;
+            
             const weekSolves = solveData.filter(entry => {
                 const entryDate = new Date(entry.timestamp_iso);
-                return entryDate >= weekStartUTC;
+                const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
+                return entryLocal >= weekStart;
             }).length;
+            
             const successRate = totalSolves > 0 ? '99.8%' : '0%';
 
             document.getElementById('totalSolves').textContent = totalSolves.toLocaleString();
@@ -1005,52 +1009,65 @@ curl -X POST http://203.161.41.146:5000/solve \
 
         function filterDataByTimeRange(data, range) {
             const now = new Date();
+            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             let startTime;
 
             switch(range) {
                 case 'day':
-                    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+                    const todayStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+                    todayStart.setHours(0, 0, 0, 0);
                     startTime = todayStart;
                     break;
                 case 'week':
-                    const weekStart = new Date(now);
-                    const dayOfWeek = weekStart.getUTCDay();
+                    const weekStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+                    weekStart.setHours(0, 0, 0, 0);
+                    const dayOfWeek = weekStart.getDay();
                     const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-                    weekStart.setUTCDate(weekStart.getUTCDate() + diffToMonday);
-                    weekStart.setUTCHours(0, 0, 0, 0);
+                    weekStart.setDate(weekStart.getDate() + diffToMonday);
                     startTime = weekStart;
                     break;
                 case 'month':
-                    startTime = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+                    const monthStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+                    monthStart.setDate(1);
+                    monthStart.setHours(0, 0, 0, 0);
+                    startTime = monthStart;
                     break;
                 case 'year':
-                    startTime = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+                    const yearStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+                    yearStart.setMonth(0, 1);
+                    yearStart.setHours(0, 0, 0, 0);
+                    startTime = yearStart;
                     break;
             }
 
-            return data.filter(entry => new Date(entry.timestamp_iso) >= startTime);
+            return data.filter(entry => {
+                const entryDate = new Date(entry.timestamp_iso);
+                const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
+                return entryLocal >= startTime;
+            });
         }
 
         function aggregateData(data, range) {
             const aggregated = {};
-            const now = new Date();
+            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
             data.forEach(entry => {
                 const date = new Date(entry.timestamp_iso);
+                const localDate = new Date(date.toLocaleString('en-US', { timeZone: userTimezone }));
                 let key;
 
                 switch(range) {
                     case 'day':
-                        key = date.getUTCHours();
+                        key = localDate.getHours();
                         break;
                     case 'week':
-                        key = date.getUTCDay();
+                        key = localDate.getDay();
                         break;
                     case 'month':
-                        key = Math.floor((date.getUTCDate() - 1) / 7);
+                        key = Math.floor((localDate.getDate() - 1) / 7);
                         break;
                     case 'year':
-                        key = date.getUTCMonth();
+                        key = localDate.getMonth();
                         break;
                 }
 
