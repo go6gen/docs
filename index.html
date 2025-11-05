@@ -1009,7 +1009,8 @@ curl -X POST http://203.161.41.146:5000/solve \
 
             switch(range) {
                 case 'day':
-                    startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+                    startTime = todayStart;
                     break;
                 case 'week':
                     const weekStart = new Date(now);
