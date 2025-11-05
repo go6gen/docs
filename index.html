@@ -872,13 +872,26 @@ curl -X POST http://203.161.41.146:5000/solve \
 
         function updateStatsOverview() {
             const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const weekStart = new Date(today);
-            weekStart.setDate(today.getDate() - today.getDay() + 1);
+            const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+            const weekStartUTC = new Date(todayUTC);
+            const dayOfWeek = todayUTC.getUTCDay();
+            const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            weekStartUTC.setUTCDate(todayUTC.getUTCDate() + diffToMonday);
             
             const totalSolves = solveData.length;
-            const todaySolves = solveData.filter(entry => new Date(entry.timestamp_iso) >= today).length;
-            const weekSolves = solveData.filter(entry => new Date(entry.timestamp_iso) >= weekStart).length;
+            const todaySolves = solveData.filter(entry => {
+                const entryDate = new Date(entry.timestamp_iso);
+                const entryUTCDate = new Date(Date.UTC(
+                    entryDate.getUTCFullYear(), 
+                    entryDate.getUTCMonth(), 
+                    entryDate.getUTCDate()
+                ));
+                return entryUTCDate.getTime() === todayUTC.getTime();
+            }).length;
+            const weekSolves = solveData.filter(entry => {
+                const entryDate = new Date(entry.timestamp_iso);
+                return entryDate >= weekStartUTC;
+            }).length;
             const successRate = totalSolves > 0 ? '99.8%' : '0%';
 
             document.getElementById('totalSolves').textContent = totalSolves.toLocaleString();
@@ -1000,15 +1013,17 @@ curl -X POST http://203.161.41.146:5000/solve \
                     break;
                 case 'week':
                     const weekStart = new Date(now);
-                    weekStart.setDate(now.getDate() - now.getDay() + 1);
-                    weekStart.setHours(0, 0, 0, 0);
+                    const dayOfWeek = weekStart.getUTCDay();
+                    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                    weekStart.setUTCDate(weekStart.getUTCDate() + diffToMonday);
+                    weekStart.setUTCHours(0, 0, 0, 0);
                     startTime = weekStart;
                     break;
                 case 'month':
-                    startTime = new Date(now.getFullYear(), now.getMonth(), 1);
+                    startTime = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
                     break;
                 case 'year':
-                    startTime = new Date(now.getFullYear(), 0, 1);
+                    startTime = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
                     break;
             }
 
@@ -1025,16 +1040,16 @@ curl -X POST http://203.161.41.146:5000/solve \
 
                 switch(range) {
                     case 'day':
-                        key = date.getHours();
+                        key = date.getUTCHours();
                         break;
                     case 'week':
-                        key = date.getDay();
+                        key = date.getUTCDay();
                         break;
                     case 'month':
-                        key = Math.floor((date.getDate() - 1) / 7);
+                        key = Math.floor((date.getUTCDate() - 1) / 7);
                         break;
                     case 'year':
-                        key = date.getMonth();
+                        key = date.getUTCMonth();
                         break;
                 }
 
@@ -1050,7 +1065,7 @@ curl -X POST http://203.161.41.146:5000/solve \
             switch(range) {
                 case 'day':
                     for (let i = 0; i < 24; i++) {
-                        labels.push(`${i}:00`);
+                        labels.push(`${i.toString().padStart(2, '0')}:00`);
                         counts.push(aggregated[i] || 0);
                     }
                     break;
