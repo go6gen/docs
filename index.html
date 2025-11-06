@@ -835,285 +835,286 @@ curl -X POST http://203.161.41.146:5000/solve \
         </div>
     </div>
 
-    <script>
-        function copyCode(button) {
-            const codeBlock = button.parentElement;
-            const text = codeBlock.textContent.replace('Copy', '').trim();
+<script>
+    function copyCode(button) {
+        const codeBlock = button.parentElement;
+        const text = codeBlock.textContent.replace('Copy', '').trim();
+        
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.classList.add('copied');
             
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = button.textContent;
-                button.textContent = 'Copied!';
-                button.classList.add('copied');
-                
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.classList.remove('copied');
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-            });
-        }
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+        });
+    }
 
-        let currentTimeRange = 'day';
-        let solveData = [];
-        let chart = null;
+    let currentTimeRange = 'day';
+    let solveData = [];
+    let chart = null;
 
-        async function loadSolveData() {
-            try {
-                const response = await fetch('https://go6gen.pythonanywhere.com/solve-logs');
-                const data = await response.json();
-                solveData = data.logs || [];
-                updateStatsOverview();
-                updateChart();
-            } catch (error) {
-                console.error('Error loading solve data:', error);
-            }
-        }
-
-        function updateStatsOverview() {
-            const now = new Date();
-            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            
-            const todayStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
-            todayStart.setHours(0, 0, 0, 0);
-            
-            const weekStart = new Date(todayStart);
-            const dayOfWeek = todayStart.getDay();
-            const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-            weekStart.setDate(todayStart.getDate() + diffToMonday);
-            
-            const totalSolves = solveData.length;
-            const todaySolves = solveData.filter(entry => {
-                const entryDate = new Date(entry.timestamp_iso);
-                const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
-                const entryLocalDate = new Date(entryLocal.getFullYear(), entryLocal.getMonth(), entryLocal.getDate());
-                return entryLocalDate.getTime() === todayStart.getTime();
-            }).length;
-            
-            const weekSolves = solveData.filter(entry => {
-                const entryDate = new Date(entry.timestamp_iso);
-                const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
-                return entryLocal >= weekStart;
-            }).length;
-            
-            const successRate = totalSolves > 0 ? '99.8%' : '0%';
-
-            document.getElementById('totalSolves').textContent = totalSolves.toLocaleString();
-            document.getElementById('todaySolves').textContent = todaySolves.toLocaleString();
-            document.getElementById('weekSolves').textContent = weekSolves.toLocaleString();
-            document.getElementById('successRate').textContent = successRate;
-        }
-
-        function changeTimeRange(range) {
-            document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            currentTimeRange = range;
+    async function loadSolveData() {
+        try {
+            const response = await fetch('https://go6gen.pythonanywhere.com/solve-logs');
+            const data = await response.json();
+            solveData = data.logs || [];
+            updateStatsOverview();
             updateChart();
+        } catch (error) {
+            console.error('Error loading solve data:', error);
+        }
+    }
+
+    function updateStatsOverview() {
+        const now = new Date();
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        const todayStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+        todayStart.setHours(0, 0, 0, 0);
+        
+        const weekStart = new Date(todayStart);
+        const dayOfWeek = todayStart.getDay();
+        const diffToMonday = (dayOfWeek + 6) % 7;
+        weekStart.setDate(todayStart.getDate() - diffToMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        
+        const totalSolves = solveData.length;
+        const todaySolves = solveData.filter(entry => {
+            const entryDate = new Date(entry.timestamp_iso);
+            const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
+            const entryLocalDate = new Date(entryLocal.getFullYear(), entryLocal.getMonth(), entryLocal.getDate());
+            return entryLocalDate.getTime() === todayStart.getTime();
+        }).length;
+        
+        const weekSolves = solveData.filter(entry => {
+            const entryDate = new Date(entry.timestamp_iso);
+            const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
+            return entryLocal >= weekStart;
+        }).length;
+        
+        const successRate = totalSolves > 0 ? '99.8%' : '0%';
+
+        document.getElementById('totalSolves').textContent = totalSolves.toLocaleString();
+        document.getElementById('todaySolves').textContent = todaySolves.toLocaleString();
+        document.getElementById('weekSolves').textContent = weekSolves.toLocaleString();
+        document.getElementById('successRate').textContent = successRate;
+    }
+
+    function changeTimeRange(range) {
+        document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        currentTimeRange = range;
+        updateChart();
+    }
+
+    function updateChart() {
+        const ctx = document.getElementById('statsChart').getContext('2d');
+        
+        if (chart) {
+            chart.destroy();
         }
 
-        function updateChart() {
-            const ctx = document.getElementById('statsChart').getContext('2d');
-            
-            if (chart) {
-                chart.destroy();
-            }
+        const filteredData = filterDataByTimeRange(solveData, currentTimeRange);
+        const { labels, data } = aggregateData(filteredData, currentTimeRange);
 
-            const filteredData = filterDataByTimeRange(solveData, currentTimeRange);
-            const { labels, data } = aggregateData(filteredData, currentTimeRange);
-
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Solves',
-                        data: data,
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Solves',
+                    data: data,
+                    borderColor: '#8B5CF6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#8B5CF6',
+                    pointBorderColor: '#1A1B2F',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 10,
+                    pointHoverBackgroundColor: '#EC4899',
+                    pointHoverBorderColor: '#1A1B2F',
+                    pointHoverBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(26, 27, 47, 0.9)',
+                        titleColor: '#8B5CF6',
+                        bodyColor: '#E2E8F0',
                         borderColor: '#8B5CF6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                        borderWidth: 3,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#8B5CF6',
-                        pointBorderColor: '#1A1B2F',
-                        pointBorderWidth: 2,
-                        pointRadius: 6,
-                        pointHoverRadius: 10,
-                        pointHoverBackgroundColor: '#EC4899',
-                        pointHoverBorderColor: '#1A1B2F',
-                        pointHoverBorderWidth: 2
-                    }]
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return `${tooltipItems[0].label}`;
+                            },
+                            label: function(context) {
+                                return `Solves: ${context.parsed.y}`;
+                            }
+                        }
+                    }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(139, 92, 246, 0.1)'
                         },
-                        tooltip: {
-                            backgroundColor: 'rgba(26, 27, 47, 0.9)',
-                            titleColor: '#8B5CF6',
-                            bodyColor: '#E2E8F0',
-                            borderColor: '#8B5CF6',
-                            borderWidth: 1,
-                            cornerRadius: 8,
-                            displayColors: false,
-                            callbacks: {
-                                title: function(tooltipItems) {
-                                    return `${tooltipItems[0].label}`;
-                                },
-                                label: function(context) {
-                                    return `Solves: ${context.parsed.y}`;
-                                }
+                        ticks: {
+                            color: '#94A3B8',
+                            font: {
+                                family: 'Inter'
                             }
                         }
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(139, 92, 246, 0.1)'
-                            },
-                            ticks: {
-                                color: '#94A3B8',
-                                font: {
-                                    family: 'Inter'
-                                }
-                            }
+                    x: {
+                        grid: {
+                            color: 'rgba(139, 92, 246, 0.1)'
                         },
-                        x: {
-                            grid: {
-                                color: 'rgba(139, 92, 246, 0.1)'
-                            },
-                            ticks: {
-                                color: '#94A3B8',
-                                font: {
-                                    family: 'Inter'
-                                }
+                        ticks: {
+                            color: '#94A3B8',
+                            font: {
+                                family: 'Inter'
                             }
-                        }
-                    },
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
-                    animations: {
-                        tension: {
-                            duration: 1000,
-                            easing: 'linear'
                         }
                     }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                animations: {
+                    tension: {
+                        duration: 1000,
+                        easing: 'linear'
+                    }
                 }
-            });
+            }
+        });
+    }
+
+    function filterDataByTimeRange(data, range) {
+        const now = new Date();
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        let startTime;
+
+        switch(range) {
+            case 'day':
+                const todayStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+                todayStart.setHours(0, 0, 0, 0);
+                startTime = todayStart;
+                break;
+            case 'week':
+                const weekStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+                weekStart.setHours(0, 0, 0, 0);
+                const dayOfWeek = weekStart.getDay();
+                const diffToMonday = (dayOfWeek + 6) % 7;
+                weekStart.setDate(weekStart.getDate() - diffToMonday);
+                startTime = weekStart;
+                break;
+            case 'month':
+                const monthStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+                monthStart.setDate(1);
+                monthStart.setHours(0, 0, 0, 0);
+                startTime = monthStart;
+                break;
+            case 'year':
+                const yearStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+                yearStart.setMonth(0, 1);
+                yearStart.setHours(0, 0, 0, 0);
+                startTime = yearStart;
+                break;
         }
 
-        function filterDataByTimeRange(data, range) {
-            const now = new Date();
-            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            let startTime;
+        return data.filter(entry => {
+            const entryDate = new Date(entry.timestamp_iso);
+            const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
+            return entryLocal >= startTime;
+        });
+    }
+
+    function aggregateData(data, range) {
+        const aggregated = {};
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        data.forEach(entry => {
+            const date = new Date(entry.timestamp_iso);
+            const localDate = new Date(date.toLocaleString('en-US', { timeZone: userTimezone }));
+            let key;
 
             switch(range) {
                 case 'day':
-                    const todayStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
-                    todayStart.setHours(0, 0, 0, 0);
-                    startTime = todayStart;
+                    key = localDate.getHours();
                     break;
                 case 'week':
-                    const weekStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
-                    weekStart.setHours(0, 0, 0, 0);
-                    const dayOfWeek = weekStart.getDay();
-                    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-                    weekStart.setDate(weekStart.getDate() + diffToMonday);
-                    startTime = weekStart;
+                    key = localDate.getDay();
                     break;
                 case 'month':
-                    const monthStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
-                    monthStart.setDate(1);
-                    monthStart.setHours(0, 0, 0, 0);
-                    startTime = monthStart;
+                    key = Math.floor((localDate.getDate() - 1) / 7);
                     break;
                 case 'year':
-                    const yearStart = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
-                    yearStart.setMonth(0, 1);
-                    yearStart.setHours(0, 0, 0, 0);
-                    startTime = yearStart;
+                    key = localDate.getMonth();
                     break;
             }
 
-            return data.filter(entry => {
-                const entryDate = new Date(entry.timestamp_iso);
-                const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
-                return entryLocal >= startTime;
-            });
-        }
-
-        function aggregateData(data, range) {
-            const aggregated = {};
-            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-            data.forEach(entry => {
-                const date = new Date(entry.timestamp_iso);
-                const localDate = new Date(date.toLocaleString('en-US', { timeZone: userTimezone }));
-                let key;
-
-                switch(range) {
-                    case 'day':
-                        key = localDate.getHours();
-                        break;
-                    case 'week':
-                        key = localDate.getDay();
-                        break;
-                    case 'month':
-                        key = Math.floor((localDate.getDate() - 1) / 7);
-                        break;
-                    case 'year':
-                        key = localDate.getMonth();
-                        break;
-                }
-
-                if (!aggregated[key]) {
-                    aggregated[key] = 0;
-                }
-                aggregated[key]++;
-            });
-
-            let labels = [];
-            let counts = [];
-
-            switch(range) {
-                case 'day':
-                    for (let i = 0; i < 24; i++) {
-                        labels.push(`${i.toString().padStart(2, '0')}:00`);
-                        counts.push(aggregated[i] || 0);
-                    }
-                    break;
-                case 'week':
-                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                    for (let i = 0; i < 7; i++) {
-                        labels.push(days[i]);
-                        counts.push(aggregated[i] || 0);
-                    }
-                    break;
-                case 'month':
-                    for (let i = 0; i < 4; i++) {
-                        labels.push(`Week ${i + 1}`);
-                        counts.push(aggregated[i] || 0);
-                    }
-                    break;
-                case 'year':
-                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    for (let i = 0; i < 12; i++) {
-                        labels.push(months[i]);
-                        counts.push(aggregated[i] || 0);
-                    }
-                    break;
+            if (!aggregated[key]) {
+                aggregated[key] = 0;
             }
+            aggregated[key]++;
+        });
 
-            return { labels, data: counts };
+        let labels = [];
+        let counts = [];
+
+        switch(range) {
+            case 'day':
+                for (let i = 0; i < 24; i++) {
+                    labels.push(`${i.toString().padStart(2, '0')}:00`);
+                    counts.push(aggregated[i] || 0);
+                }
+                break;
+            case 'week':
+                const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                for (let i = 0; i < 7; i++) {
+                    labels.push(days[i]);
+                    counts.push(aggregated[i] || 0);
+                }
+                break;
+            case 'month':
+                for (let i = 0; i < 4; i++) {
+                    labels.push(`Week ${i + 1}`);
+                    counts.push(aggregated[i] || 0);
+                }
+                break;
+            case 'year':
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                for (let i = 0; i < 12; i++) {
+                    labels.push(months[i]);
+                    counts.push(aggregated[i] || 0);
+                }
+                break;
         }
 
-        loadSolveData();
-        setInterval(loadSolveData, 30000);
-    </script>
+        return { labels, data: counts };
+    }
+
+    loadSolveData();
+    setInterval(loadSolveData, 30000);
+</script>
 </body>
 </html>
