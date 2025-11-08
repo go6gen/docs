@@ -1062,7 +1062,7 @@ curl -X POST http://203.161.41.146:5000/solve \
                     key = localDate.getHours();
                     break;
                 case 'week':
-                    key = localDate.getDay();
+                    key = (localDate.getDay() + 6) % 7;
                     break;
                 case 'month':
                     key = Math.floor((localDate.getDate() - 1) / 7);
