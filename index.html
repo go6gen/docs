@@ -883,6 +883,10 @@ curl -X POST http://203.161.41.146:5000/solve \
         weekStart.setDate(todayStart.getDate() - diffToMonday);
         weekStart.setHours(0, 0, 0, 0);
         
+        const monthStart = new Date(todayStart);
+        monthStart.setDate(1);
+        monthStart.setHours(0, 0, 0, 0);
+        
         const totalSolves = solveData.length;
         const todaySolves = solveData.filter(entry => {
             const entryDate = new Date(entry.timestamp_iso);
@@ -895,6 +899,12 @@ curl -X POST http://203.161.41.146:5000/solve \
             const entryDate = new Date(entry.timestamp_iso);
             const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
             return entryLocal >= weekStart;
+        }).length;
+        
+        const monthSolves = solveData.filter(entry => {
+            const entryDate = new Date(entry.timestamp_iso);
+            const entryLocal = new Date(entryDate.toLocaleString('en-US', { timeZone: userTimezone }));
+            return entryLocal >= monthStart;
         }).length;
         
         const successRate = totalSolves > 0 ? '99.8%' : '0%';
@@ -1065,7 +1075,7 @@ curl -X POST http://203.161.41.146:5000/solve \
                     key = (localDate.getDay() + 6) % 7;
                     break;
                 case 'month':
-                    key = Math.floor((localDate.getDate() - 1) / 7);
+                    key = localDate.getDate() - 1;
                     break;
                 case 'year':
                     key = localDate.getMonth();
@@ -1096,8 +1106,10 @@ curl -X POST http://203.161.41.146:5000/solve \
                 }
                 break;
             case 'month':
-                for (let i = 0; i < 4; i++) {
-                    labels.push(`Week ${i + 1}`);
+                const now = new Date();
+                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                for (let i = 0; i < daysInMonth; i++) {
+                    labels.push(`${i + 1}`);
                     counts.push(aggregated[i] || 0);
                 }
                 break;
